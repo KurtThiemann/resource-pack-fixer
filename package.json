@@ -15,7 +15,7 @@
     "esbuild": "^0.24.0"
   },
   "dependencies": {
-    "armarius": "^2.2.0",
+    "armarius": "^2.3.0",
     "armarius-io": "^1.2.5"
   }
 }

@@ -23,7 +23,8 @@ input.addEventListener("change", async () => {
     let io = new BlobIO(file);
     let archive = new ReadArchive(io, {
         ignoreMultiDiskErrors: true,
-        allowTruncatedCentralDirectory: true
+        allowTruncatedCentralDirectory: true,
+        allowAdditionalCentralDirectoryEntries: true
     });
 
     try {
