@@ -1,0 +1,21 @@
+{
+  "name": "resource-pack-fixer",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Fix corrupted resource pack ZIP files",
+  "repository": "https://github.com/KurtThiemann/resource-pack-fixer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node build.js"
+  },
+  "author": "Kurt Thiemann <kurt@thiemann.io>",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "armarius": "^2.2.0",
+    "armarius-io": "^1.2.5"
+  }
+}
