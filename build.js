@@ -7,7 +7,8 @@ const buildOptions = {
     target: "safari12",
     legalComments: "inline",
     entryPoints: ['./index.js'],
-    keepNames: true
+    keepNames: true,
+    minify: true,
 }
 
 esbuild.build(buildOptions);
