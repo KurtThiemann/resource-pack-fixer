@@ -4,7 +4,7 @@ const buildOptions = {
     bundle: true,
     sourcemap: 'linked',
     outdir: './dist/',
-    target: "safari12",
+    target: "safari14",
     legalComments: "inline",
     entryPoints: ['./index.js'],
     keepNames: true,
