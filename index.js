@@ -24,7 +24,10 @@ input.addEventListener("change", async () => {
     let archive = new ReadArchive(io, {
         ignoreMultiDiskErrors: true,
         allowTruncatedCentralDirectory: true,
-        allowAdditionalCentralDirectoryEntries: true
+        allowAdditionalCentralDirectoryEntries: true,
+        entryOptions: {
+            allowTrailingSlashInFileName: true
+        }
     });
 
     try {
@@ -74,7 +77,7 @@ async function *generateEntries(archive) {
             ignoreInvalidChecksums: true,
             ignoreInvalidUncompressedSize: true
         }), {
-            fileName: entry.getFileNameString()
+            fileName: entry.getFileNameString(),
         });
     }
 }
