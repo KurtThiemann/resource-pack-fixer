@@ -1,5 +1,5 @@
 import {BlobIO} from "armarius-io";
-import {ReadArchive, WriteArchive} from "armarius";
+import {DirectoryEntrySource, ReadArchive, WriteArchive} from "armarius";
 import DataStreamEntrySource from "armarius/src/Archive/EntrySource/DataStreamEntrySource.js";
 
 let input = document.getElementById("resource-pack-input");
@@ -63,6 +63,13 @@ async function *generateEntries(archive) {
     let entries = await archive.getEntryIterator();
     let entry;
     while (entry = await entries.next()) {
+        if (entry.isDirectory()) {
+            yield new DirectoryEntrySource({
+                fileName: entry.getFileNameString()
+            });
+            continue;
+        }
+
         yield new DataStreamEntrySource(await entry.getDataReader({
             ignoreInvalidChecksums: true,
             ignoreInvalidUncompressedSize: true
