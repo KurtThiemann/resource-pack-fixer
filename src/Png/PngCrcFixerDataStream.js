@@ -1,4 +1,5 @@
-import {CRC32, DataStream} from "armarius-io";
+import {BufferUtils, DataStream} from "armarius-io";
+import PngChunk from "./PngChunk.js";
 
 export default class PngCrcFixerDataStream extends DataStream {
     /** @type {DataStream} */ sourceStream;
@@ -6,6 +7,7 @@ export default class PngCrcFixerDataStream extends DataStream {
     /** @type {boolean} */ firstChunk = true;
     /** @type {boolean} */ eof = false;
     /** @type {number} */ offset = 0;
+    /** @type {Uint8Array[]} */ imageData = [];
 
     /**
      * @param {DataStream} sourceStream
@@ -74,27 +76,42 @@ export default class PngCrcFixerDataStream extends DataStream {
             return signature;
         }
 
-        let lengthBuffer = await this.readFromSource(4);
-        let length = (lengthBuffer[0] << 24) | (lengthBuffer[1] << 16) | (lengthBuffer[2] << 8) | lengthBuffer[3];
+        let chunk = await PngChunk.fromStream(this);
 
-        let chunk = await this.readFromSource(length + 8);
-        let crc = CRC32.hash(chunk.subarray(0, chunk.byteLength - 4));
-        let crcBuffer = new Uint8Array(4);
-        crcBuffer[0] = (crc >> 24) & 0xFF;
-        crcBuffer[1] = (crc >> 16) & 0xFF;
-        crcBuffer[2] = (crc >> 8) & 0xFF;
-        crcBuffer[3] = crc & 0xFF;
-
-        let result = new Uint8Array(length + 12);
-        result.set(lengthBuffer);
-        result.set(chunk.subarray(0, chunk.byteLength - 4), 4);
-        result.set(crcBuffer, chunk.byteLength);
-
-        if (chunk[0] === 0x49 && chunk[1] === 0x45 && chunk[2] === 0x4e && chunk[3] === 0x44) {
+        if (chunk.hasType("IEND")) {
             this.eof = true;
         }
 
-        return result;
+        if (chunk.hasType("IDAT")) {
+            this.imageData.push(chunk.getData());
+            return new Uint8Array(0);
+        } else if (this.imageData.length) {
+            let iDat = await this.createIDatChunk();
+            return BufferUtils.concatBuffers([
+                iDat.serialize(),
+                chunk.serialize()
+            ]);
+        }
+
+        return chunk.serialize();
+    }
+
+    /**
+     * @return {Promise<PngChunk>}
+     */
+    async createIDatChunk() {
+        let originalData = BufferUtils.concatBuffers(this.imageData);
+        this.imageData = [];
+        let offset = 0;
+        for (let chunk of this.imageData) {
+            originalData.set(chunk, offset);
+            offset += chunk.byteLength;
+        }
+
+        let decompressed = await this.decompress(originalData);
+        let compressed = await this.compress(decompressed);
+
+        return new PngChunk(new Uint8Array([0x49, 0x44, 0x41, 0x54]), compressed);
     }
 
     /**
@@ -138,6 +155,40 @@ export default class PngCrcFixerDataStream extends DataStream {
         this.firstChunk = true;
         this.eof = false;
         this.offset = 0;
+        this.imageData = [];
         return this;
+    }
+
+    /**
+     * @param {Uint8Array} data
+     * @return {Promise<Uint8Array>}
+     */
+    async decompress(data) {
+        data = data.subarray(2, data.length - 4);
+        let inputStream = new ReadableStream({
+            start: (controller) => {
+                controller.enqueue(data);
+                controller.close();
+            }
+        });
+        const ds = new DecompressionStream('deflate-raw');
+        const decompressedStream = inputStream.pipeThrough(ds);
+        return new Uint8Array(await new Response(decompressedStream).arrayBuffer());
+    }
+
+    /**
+     * @param {Uint8Array} data
+     * @return {Promise<Uint8Array>}
+     */
+    async compress(data) {
+        const inputStream = new ReadableStream({
+            start: (controller) => {
+                controller.enqueue(data);
+                controller.close();
+            }
+        });
+        const cs = new CompressionStream('deflate');
+        const compressedStream = inputStream.pipeThrough(cs);
+        return new Uint8Array(await new Response(compressedStream).arrayBuffer());
     }
 }

@@ -1,7 +1,7 @@
 import {BlobIO} from "armarius-io";
 import {DirectoryEntrySource, ReadArchive, WriteArchive} from "armarius";
 import DataStreamEntrySource from "armarius/src/Archive/EntrySource/DataStreamEntrySource.js";
-import PngCrcFixerDataStream from "./src/PngCrcFixerDataStream.js";
+import PngCrcFixerDataStream from "./src/Png/PngCrcFixerDataStream.js";
 
 let input = document.getElementById("resource-pack-input");
 let status = document.getElementsByClassName("status")[0];
