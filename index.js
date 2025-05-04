@@ -1,6 +1,7 @@
 import {BlobIO} from "armarius-io";
 import {DirectoryEntrySource, ReadArchive, WriteArchive} from "armarius";
 import DataStreamEntrySource from "armarius/src/Archive/EntrySource/DataStreamEntrySource.js";
+import PngCrcFixerDataStream from "./src/PngCrcFixerDataStream.js";
 
 let input = document.getElementById("resource-pack-input");
 let status = document.getElementsByClassName("status")[0];
@@ -38,7 +39,11 @@ input.addEventListener("change", async () => {
     }
 
     setStatus("Creating ZIP archive...");
-    let writeArchive = new WriteArchive(generateEntries(archive));
+    let writeArchive = new WriteArchive(generateEntries(archive, (entryCount) => {
+        if (entryCount % 10 === 0) {
+            setStatus(`Processed ${entryCount} files...`);
+        }
+    }));
     let chunks = [];
     let chunk;
     try {
@@ -62,22 +67,58 @@ input.addEventListener("change", async () => {
     a.click();
 });
 
-async function *generateEntries(archive) {
+let count = 0;
+async function *generateEntries(archive, onProgress = null) {
     let entries = await archive.getEntryIterator();
     let entry;
     while (entry = await entries.next()) {
+        let name = entry.getFileNameString();
         if (entry.isDirectory()) {
             yield new DirectoryEntrySource({
-                fileName: entry.getFileNameString()
+                fileName: name
             });
             continue;
         }
 
-        yield new DataStreamEntrySource(await entry.getDataReader({
+        let stream = await entry.getDataReader({
             ignoreInvalidChecksums: true,
             ignoreInvalidUncompressedSize: true
-        }), {
-            fileName: entry.getFileNameString(),
+        });
+
+        if (/\.png\/*$/.test(name)) {
+            let fixerStream = new PngCrcFixerDataStream(stream);
+            if (await testPngFixer(fixerStream)) {
+                stream = fixerStream;
+            } else {
+                console.warn(`PNG CRC fixer failed for ${name}, using original file content`);
+            }
+        }
+
+        count++;
+        if (onProgress) {
+            onProgress(count);
+        }
+
+        yield new DataStreamEntrySource(stream, {
+            fileName: name,
         });
     }
+}
+
+/**
+ * @param {PngCrcFixerDataStream} stream
+ * @return {Promise<boolean>}
+ */
+async function testPngFixer(stream) {
+    let chunk;
+    do {
+        try {
+            chunk = await stream.pull(1024 * 1024);
+        } catch (e) {
+            await stream.reset();
+            return false;
+        }
+    } while (chunk !== null);
+    await stream.reset();
+    return true;
 }
