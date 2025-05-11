@@ -12,7 +12,7 @@
   "author": "Kurt Thiemann <kurt@thiemann.io>",
   "license": "MIT",
   "devDependencies": {
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.25.4"
   },
   "dependencies": {
     "armarius": "^2.4.0",
